@@ -21,8 +21,8 @@ jobs:
             xfce4-goodies \
             tigervnc-standalone-server \
             tigervnc-common \
-            dbus-x11 \
-            firefox-esr
+            dbus-x11 
+        
 
       - name: Setup VNC Server
         run: |
