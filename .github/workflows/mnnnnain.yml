@@ -1,0 +1,75 @@
+name: Debian SSHX with XFCE4 and VNC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-debian-xfce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update and Install XFCE4
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xfce4 \
+            xfce4-terminal \
+            xfce4-goodies \
+            tigervnc-standalone-server \
+            tigervnc-common \
+            dbus-x11 \
+            firefox-esr
+
+      - name: Setup VNC Server
+        run: |
+          mkdir -p ~/.vnc
+          echo "password" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+          
+          # Create xstartup file
+          cat > ~/.vnc/xstartup << 'EOF'
+          #!/bin/sh
+          unset SESSION_MANAGER
+          unset DBUS_SESSION_BUS_ADDRESS
+          export XKL_XMODMAP_DISABLE=1
+          exec startxfce4
+          EOF
+          
+          chmod +x ~/.vnc/xstartup
+
+      - name: Start VNC Server
+        run: |
+          vncserver :1 -geometry 1920x1080 -depth 24
+
+      - name: Install and Start SSHX
+        run: |
+          curl -sSf https://sshx.io/get | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          echo "================================"
+          echo "Starting SSHX session..."
+          echo "================================"
+          
+          sshx > sshx.log 2>&1 &
+          sleep 5
+          cat sshx.log
+          
+          echo "================================"
+          echo "VNC is running on display :1"
+          echo "VNC Password: password"
+          echo "================================"
+
+      - name: Keep Alive
+        run: |
+          echo "Session will remain active for 6 hours"
+          sleep 21600
+
+      - name: Cleanup
+        if: always()
+        run: |
+          vncserver -kill :1 || true
+          pkill sshx || true
